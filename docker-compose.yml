@@ -1,0 +1,56 @@
+version: "3.6"
+
+services:
+    # Create a new container to run MongoDB
+    db:
+        image: mongo:4.4.2
+        container_name: devicetwin-mongodb
+        ports:
+          - "27017:27017"  
+        networks:
+          - mern-network
+        restart: always
+        volumes:
+          - mongo-data:/data/dtwin
+          - ./mongo-init.js:/docker-entrypoint-initdb.d/mongodbinit.js:ro
+        environment:
+          MONGO_INITDB_ROOT_USERNAME: mongoadmin
+          MONGO_INITDB_ROOT_PASSWORD: secret
+          MONGO_INITDB_DATABASE: dtwindb
+
+    db-admin:
+        image: mongo-express
+        container_name: devicetwin-mongodb-admin
+        ports:
+          - "8081:8081"  
+        networks:
+          - mern-network
+        environment:
+          ME_CONFIG_MONGODB_SERVER: devicetwin-mongodb
+          ME_CONFIG_MONGODB_ADMINUSERNAME: mongoadmin
+          ME_CONFIG_MONGODB_ADMINPASSWORD: secret
+        depends_on:
+          - db
+
+    # Run the Dockerfile to build a project in the current directory
+    api:
+        image: dtwin-api
+        ports:
+          - "8082:8082"
+        networks:
+          - mern-network
+        environment:
+          ME_CONFIG_MONGODB_SERVER: devicetwin-mongodb
+          ME_CONFIG_MONGODB_ADMINUSERNAME: mongoadmin
+          ME_CONFIG_MONGODB_ADMINPASSWORD: secret
+          WAIT_HOSTS: devicetwin-mongodb:27017
+        depends_on:
+          - db 
+
+  
+networks:
+     mern-network:
+        driver: bridge
+volumes:
+  mongo-data:
+    driver: local
